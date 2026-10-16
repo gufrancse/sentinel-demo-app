@@ -49,7 +49,7 @@ demo-shop/
 │   └── dashboard.ejs
 ├── public/
 │   └── style.css
-├── .env                    # SentinelType API URL, session secret (never committed)
+├── .env
 └── package.json
 ```
 
