@@ -80,10 +80,13 @@
                     })
                     .then(r => r.json().then(d => ({ ok: r.ok, body: d })))
                     .then(({ ok, body }) => {
-                        if (ok && body.success) {
-                            statusEl.textContent = "Enrolled! You can log in now.";
-                            statusEl.className = "status-msg ok";
-                        } else {
+                            if (ok && body.success) {
+                                statusEl.textContent = "Enrolled! Redirecting to login...";
+                                statusEl.className = "status-msg ok";
+                                setTimeout(() => {
+                                    window.location.href = "/login";
+                                }, 1500);
+                            } else {
                             statusEl.textContent = "Enrollment failed: " + (body.message || "unknown error");
                             statusEl.className = "status-msg error";
                             box.disabled = false;
