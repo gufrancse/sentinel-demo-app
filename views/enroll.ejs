@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NorthGate Admin — Security enrollment</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="restricted-banner">🔒 RESTRICTED SYSTEM — Authorized personnel only. All access attempts are logged.</div>
+    <div class="nav">
+        <a href="/" class="nav-brand"><span class="dot"></span> NorthGate Admin</a>
+        <span class="badge">Protected by SentinelType</span>
+    </div>
+
+    <div class="page">
+        <div class="card">
+            <h1>Enroll your security signature</h1>
+            <p class="subtitle">Type the phrase below naturally, 5 times. This builds your behavioral baseline in SentinelType.</p>
+
+            <div class="phrase-box">Type: <strong id="phrase">Secure#Demo92!App</strong></div>
+
+            <input id="typingBox" autocomplete="off" placeholder="Type the phrase here">
+            <p class="progress">Samples collected: <span id="count">0</span> / 5</p>
+            <p id="status" class="status-msg muted"></p>
+        </div>
+    </div>
+
+    <script>
+        const phrase = document.getElementById("phrase").textContent;
+        const box = document.getElementById("typingBox");
+        const statusEl = document.getElementById("status");
+        let samples = [];
+        let keyDownTimes = {}, lastKeyUp = null, keystrokes = [], startTime = null;
+
+        box.addEventListener("keydown", (e) => {
+            const t = performance.now();
+            if (startTime === null) startTime = t;
+            const flight = lastKeyUp !== null ? t - lastKeyUp : null;
+            keyDownTimes[e.code] = { t, flight };
+        });
+
+        box.addEventListener("keyup", (e) => {
+            if (samples.length >= 5) return;
+
+            const t = performance.now();
+            const d = keyDownTimes[e.code];
+            if (!d) return;
+            keystrokes.push({ dwell: t - d.t, flight: d.flight });
+            lastKeyUp = t;
+            delete keyDownTimes[e.code];
+
+            if (box.value === phrase) {
+                const dwellTimes = keystrokes.map(k => k.dwell);
+                const flightTimes = keystrokes.filter(k => k.flight !== null).map(k => k.flight);
+                const duration = performance.now() - startTime;
+
+                samples.push({
+                    averageDwellTime: dwellTimes.reduce((a,b)=>a+b,0)/dwellTimes.length,
+                    averageFlightTime: flightTimes.length ? flightTimes.reduce((a,b)=>a+b,0)/flightTimes.length : 0,
+                    typingDuration: duration,
+                    typingSpeedWPM: (keystrokes.length/5)/(duration/60000),
+                    averageMouseSpeed: 0,
+                    averageClickInterval: 0
+                });
+
+                document.getElementById("count").textContent = samples.length;
+                box.value = "";
+                keystrokes = []; startTime = null; lastKeyUp = null;
+
+                if (samples.length === 5) {
+                    box.disabled = true;
+                    box.placeholder = "Enrolling...";
+                    statusEl.textContent = "Submitting your samples...";
+                    statusEl.className = "status-msg muted";
+
+                    fetch("/api/enroll-behavior", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username: "<%= username %>", samples })
+                    })
+                    .then(r => r.json().then(d => ({ ok: r.ok, body: d })))
+                    .then(({ ok, body }) => {
+                        if (ok && body.success) {
+                            statusEl.textContent = "Enrolled! You can log in now.";
+                            statusEl.className = "status-msg ok";
+                        } else {
+                            statusEl.textContent = "Enrollment failed: " + (body.message || "unknown error");
+                            statusEl.className = "status-msg error";
+                            box.disabled = false;
+                            box.placeholder = "Type the phrase here";
+                        }
+                    })
+                    .catch((err) => {
+                        console.error(err);
+                        statusEl.textContent = "Request to SentinelType failed — check the server terminal.";
+                        statusEl.className = "status-msg error";
+                        box.disabled = false;
+                        box.placeholder = "Type the phrase here";
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

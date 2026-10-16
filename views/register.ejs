@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NorthGate Admin — Request access</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="restricted-banner">🔒 RESTRICTED SYSTEM — Authorized personnel only. All access attempts are logged.</div>
+    <div class="nav">
+        <a href="/" class="nav-brand"><span class="dot"></span> NorthGate Admin</a>
+        <span class="badge">Protected by SentinelType</span>
+    </div>
+
+    <div class="page">
+        <div class="card">
+            <h1>Request admin access</h1>
+            <p class="subtitle">Your password is managed here. Your typing behavior will be verified by SentinelType.</p>
+
+            <form method="POST" action="/register">
+                <label>Username</label>
+                <input name="username" placeholder="e.g. gufran" required>
+
+                <label>Password</label>
+                <input name="password" type="password" placeholder="At least 6 characters" required>
+
+                <button type="submit">Continue</button>
+            </form>
+
+            <% if (error) { %><p class="status-msg error"><%= error %></p><% } %>
+
+            <p class="foot-link">Already have access? <a href="/login">Sign in</a></p>
+        </div>
+    </div>
+</body>
+</html>

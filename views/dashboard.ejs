@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NorthGate Admin — Console</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="nav">
+        <a href="/" class="nav-brand"><span class="dot"></span> NorthGate Admin</a>
+        <span class="badge">Protected by SentinelType</span>
+    </div>
+
+    <div class="dash-wrap">
+        <h1>Welcome, <%= username %></h1>
+
+        <div class="verify-banner">
+            ✅ Access granted — password verified by NorthGate, typing behavior verified by SentinelType's risk engine. Session logged.
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-card"><div class="label">Active admins</div><div class="value">4</div></div>
+            <div class="stat-card"><div class="label">Pending approvals</div><div class="value warn">2</div></div>
+            <div class="stat-card"><div class="label">Failed logins (24h)</div><div class="value warn">3</div></div>
+            <div class="stat-card"><div class="label">System status</div><div class="value ok">Operational</div></div>
+        </div>
+
+        <div class="section-title">Recent access log</div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Time</th><th>Admin</th><th>Action</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>10:42 PM</td><td><%= username %></td><td>Signed in</td><td><span class="pill ok">Allowed</span></td></tr>
+                    <tr><td>09:58 PM</td><td>unknown</td><td>Sign-in attempt</td><td><span class="pill warn">Flagged</span></td></tr>
+                    <tr><td>Yesterday</td><td><%= username %></td><td>Password reset</td><td><span class="pill ok">Allowed</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

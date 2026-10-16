@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NorthGate Admin — Sign in</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="restricted-banner">🔒 RESTRICTED SYSTEM — Authorized personnel only. All access attempts are logged.</div>
+    <div class="nav">
+        <a href="/" class="nav-brand"><span class="dot"></span> NorthGate Admin</a>
+        <span class="badge">Protected by SentinelType</span>
+    </div>
+
+    <div class="page">
+        <div class="card">
+            <h1>Administrator sign-in</h1>
+            <p class="subtitle">Enter your credentials, then type the verification phrase below.</p>
+
+            <div class="phrase-box">Type: <strong id="phrase">Secure#Demo92!App</strong></div>
+
+            <form id="loginForm" method="POST" action="/login">
+                <label>Admin username</label>
+                <input name="username" id="username" placeholder="Your username" required>
+
+                <label>Password</label>
+                <input name="password" type="password" placeholder="Your password" required>
+
+                <label>Verification phrase</label>
+                <input id="typingBox" autocomplete="off" placeholder="Type the phrase above" required>
+
+                <input type="hidden" name="behavioralSample" id="behavioralSample">
+                <button type="submit">Sign in</button>
+            </form>
+
+            <% if (error) { %><p class="status-msg error"><%- error %></p><% } %>
+
+            <p class="foot-link">Need access? <a href="/register">Request an account</a></p>
+        </div>
+    </div>
+
+    <script>
+        const phrase = document.getElementById("phrase").textContent;
+        const box = document.getElementById("typingBox");
+        let keyDownTimes = {}, lastKeyUp = null, keystrokes = [], startTime = null;
+
+        box.addEventListener("keydown", (e) => {
+            const t = performance.now();
+            if (startTime === null) startTime = t;
+            const flight = lastKeyUp !== null ? t - lastKeyUp : null;
+            keyDownTimes[e.code] = { t, flight };
+        });
+
+        box.addEventListener("keyup", (e) => {
+            const t = performance.now();
+            const d = keyDownTimes[e.code];
+            if (!d) return;
+            keystrokes.push({ dwell: t - d.t, flight: d.flight });
+            lastKeyUp = t;
+            delete keyDownTimes[e.code];
+        });
+
+        document.getElementById("loginForm").addEventListener("submit", () => {
+            const dwellTimes = keystrokes.map(k => k.dwell);
+            const flightTimes = keystrokes.filter(k => k.flight !== null).map(k => k.flight);
+            const duration = performance.now() - startTime;
+
+            document.getElementById("behavioralSample").value = JSON.stringify({
+                averageDwellTime: dwellTimes.reduce((a,b)=>a+b,0)/dwellTimes.length,
+                averageFlightTime: flightTimes.length ? flightTimes.reduce((a,b)=>a+b,0)/flightTimes.length : 0,
+                typingDuration: duration,
+                typingSpeedWPM: (keystrokes.length/5)/(duration/60000),
+                averageMouseSpeed: 0,
+                averageClickInterval: 0
+            });
+        });
+    </script>
+</body>
+</html>
