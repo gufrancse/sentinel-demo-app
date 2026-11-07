@@ -1,87 +1,355 @@
-# NorthGate Admin (DemoShop client)
+# SentinelType Demo App
 
-A demo internal admin portal used to showcase **SentinelType** integrated as a third-party security layer — the way a real application would consume it over an API.
+### NorthGate Admin — API Integration Demonstration
 
-This app is intentionally simple: it manages its own usernames/passwords, and on every login it calls out to SentinelType to verify the user's typing behavior before granting access. The two systems are independent — NorthGate never sees SentinelType's internals, and SentinelType never touches NorthGate's password store.
+A lightweight web application demonstrating how **SentinelType's Behavioural Biometric Authentication API** can be integrated into an existing application.
 
-> This is a fictional internal system built only to demonstrate the integration. It is not a real product and has no connection to any real company or banking/admin system.
+NorthGate Admin acts as a sample client application that delegates behavioural verification to SentinelType through REST API requests.
+
+The purpose of this project is to demonstrate how an independent application can add behavioural biometric verification to its existing password-based authentication workflow without implementing the machine-learning logic itself.
+
+> **This is an integration demo, not a standalone authentication product.** SentinelType handles behavioural analysis, while NorthGate Admin handles its own user credentials and application-side access decisions.
 
 ---
 
-## What it shows
+## Overview
 
-```
-User submits username + password + typed phrase
-        ↓
-NorthGate verifies the password itself (bcrypt/hash check)
-        ↓
-NorthGate sends the captured keystroke timing data to SentinelType's API
-        ↓
-SentinelType returns a behavioral match score + risk level
-        ↓
-NorthGate decides: grant access / show error
-```
+Traditional applications generally authenticate users using their own credentials.
 
-- **Registration** — create a local account (password hashed, stored only in NorthGate's own DB).
-- **Enrollment** — type a fixed phrase 5 times; the captured keystroke timings are sent to SentinelType's `/api/enroll-behavior` endpoint to build a behavioral baseline.
-- **Login** — password is checked locally; the same phrase is typed again and sent to SentinelType's `/api/verify-behavior` endpoint, which returns whether this attempt matches the enrolled behavior.
-- **Admin console** — a mock internal dashboard (access log, pending approvals, system status) shown only after both password and behavioral checks pass.
+SentinelType provides an additional behavioural verification layer that an application can consume through an API.
 
-## Tech stack
+This demo demonstrates that integration using two independent applications:
 
-| Layer | Technology |
+| Application | Responsibility |
 |---|---|
-| Server | Node.js, Express |
-| Views | EJS |
-| Styling | Plain CSS (no framework) |
-| Auth | Local sessions, hashed passwords |
-| Security layer | SentinelType REST API (separate service) |
+| NorthGate Admin | User registration, password verification, session handling, and application access |
+| SentinelType | Behavioural enrollment, typing-pattern analysis, and authentication risk decision |
 
-## Project structure
+NorthGate does not implement or access SentinelType's internal machine-learning model. It simply sends behavioural data to the API and processes the response.
 
+---
+
+## Authentication Workflow
+
+The integration follows this workflow:
+
+```text
+             USER
+               |
+               v
+       NorthGate Admin
+               |
+               v
+       User Registration
+               |
+               v
+      Password Authentication
+               |
+               v
+      Capture Typing Behaviour
+               |
+               v
+      NorthGate API Request
+               |
+               v
+        SentinelType API
+               |
+               v
+      Behavioural Verification
+               |
+               v
+       Risk Decision Response
+               |
+          +----+----+
+          |         |
+          v         v
+        Allowed   Rejected
+          |         |
+          v         v
+      Dashboard   Login Error
 ```
-demo-shop/
-├── server.js              # Express app, routes (/register, /login, /logout, /api/enroll-behavior)
+
+### Step-by-Step Process
+
+**1. User Registration**
+
+The user creates an account in NorthGate Admin using a username and password.
+
+The password is hashed using bcrypt before being stored in the application's in-memory user store.
+
+**2. Behavioural Enrollment**
+
+After registration, the user is redirected to the behavioural enrollment page.
+
+The user types the predefined challenge phrase:
+
+`Secure#Demo92!App`
+
+The application collects five typing samples and extracts behavioural timing features.
+
+These samples are submitted to SentinelType through its enrollment API.
+
+**3. Password Verification**
+
+During login, NorthGate Admin independently verifies the username and password using bcrypt.
+
+SentinelType never receives or verifies the NorthGate password.
+
+**4. Behavioural Verification**
+
+After successful password verification, NorthGate captures a new typing sample and sends it to SentinelType for behavioural analysis.
+
+**5. API Response**
+
+SentinelType evaluates the submitted sample and returns a response containing the authentication decision, match score, and available explanation details.
+
+**6. Access Decision**
+
+NorthGate processes the API response:
+
+- If the decision is `allowed`, the application creates a session and redirects the user to the dashboard.
+- If behavioural verification is not accepted, the application displays the returned decision and available reasons.
+
+---
+
+## SentinelType API Integration
+
+NorthGate communicates with SentinelType through HTTP REST API requests using Axios.
+
+### 1. Behavioural Enrollment
+
+**SentinelType endpoint:**
+
+```http
+POST /api/v1/enroll
+```
+
+NorthGate sends the username and collected behavioural samples.
+
+Example request structure:
+
+```json
+{
+  "username": "admin",
+  "samples": [
+    {
+      "averageDwellTime": 85.4,
+      "averageFlightTime": 110.2,
+      "typingDuration": 2400,
+      "typingSpeedWPM": 30,
+      "averageMouseSpeed": 0,
+      "averageClickInterval": 0
+    }
+  ]
+}
+```
+
+The actual enrollment request contains the collected sample set.
+
+### 2. Behavioural Verification
+
+**SentinelType endpoint:**
+
+```http
+POST /api/v1/verify
+```
+
+NorthGate submits the username and newly captured behavioural sample.
+
+Example request structure:
+
+```json
+{
+  "username": "admin",
+  "behavioralSample": {
+    "averageDwellTime": 85.4,
+    "averageFlightTime": 110.2,
+    "typingDuration": 2400,
+    "typingSpeedWPM": 30,
+    "averageMouseSpeed": 0,
+    "averageClickInterval": 0
+  }
+}
+```
+
+The response is processed by NorthGate to determine whether application access should be granted.
+
+### API Authentication
+
+Requests include the SentinelType API key in the request header:
+
+```http
+X-Sentinel-Api-Key: YOUR_API_KEY
+```
+
+The API URL and API key are configured through environment variables.
+
+---
+
+## Technology Stack
+
+| Component | Technology |
+|---|---|
+| Runtime | Node.js |
+| Backend Framework | Express.js |
+| Template Engine | EJS |
+| Frontend | HTML, CSS, JavaScript |
+| HTTP Client | Axios |
+| Password Hashing | bcrypt |
+| Session Management | express-session |
+| Environment Configuration | dotenv |
+| Security Integration | SentinelType REST API |
+
+---
+
+## Project Structure
+
+```text
+sentinel-demo-app/
+│
 ├── views/
-│   ├── register.ejs
-│   ├── login.ejs
+│   ├── dashboard.ejs
 │   ├── enroll.ejs
-│   └── dashboard.ejs
+│   ├── login.ejs
+│   └── register.ejs
+│
 ├── public/
 │   └── style.css
+│
+├── server.js
+├── package.json
+├── package-lock.json
 ├── .env
-└── package.json
+├── .gitignore
+└── README.md
 ```
 
-## Running locally
+### Important Files
 
-Requires SentinelType running first (see its own README) since this app depends on it.
+| File | Purpose |
+|---|---|
+| `server.js` | Express server, registration, login, session handling, and SentinelType API communication |
+| `views/register.ejs` | User registration interface |
+| `views/login.ejs` | Password and behavioural verification interface |
+| `views/enroll.ejs` | Collection of behavioural enrollment samples |
+| `views/dashboard.ejs` | NorthGate Admin demonstration dashboard |
+| `public/style.css` | Application styling |
+| `package.json` | Project dependencies and configuration |
+| `.env` | Local environment configuration; not committed to GitHub |
+
+---
+
+## Run Locally
+
+### Prerequisites
+
+- Node.js
+- npm
+- Git
+- SentinelType backend running and accessible
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/gufrancse/sentinel-demo-app.git
+
+cd sentinel-demo-app
+```
+
+### 2. Install Dependencies
 
 ```bash
 npm install
-cp .env.example .env        # set SENTINELTYPE_API_URL and SESSION_SECRET
+```
+
+### 3. Configure Environment Variables
+
+Create a `.env` file in the project root.
+
+Add the following configuration:
+
+```env
+SENTINEL_API_URL=http://127.0.0.1:5000
+SENTINEL_API_KEY=your_sentinel_api_key
+SESSION_SECRET=your_session_secret
+```
+
+Use the actual environment variable names expected by `server.js`:
+
+- `SENTINEL_API_URL`
+- `SENTINEL_API_KEY`
+
+**Note:** `SESSION_SECRET` is a recommended configuration for a future secure session setup; the current server code still uses a hardcoded session secret.
+
+Make sure the SentinelType API URL and API key match your running backend configuration.
+
+Never commit the actual `.env` file or API credentials.
+
+### 4. Start NorthGate Admin
+
+```bash
 node server.js
 ```
 
-Open `http://localhost:4000`.
+The application runs at:
 
-## Flow to try
+```text
+http://localhost:4000
+```
 
-1. Go to `/register`, create an account.
-2. You'll be sent to `/enroll` — type the shown phrase naturally, 5 times, to build your behavioral profile.
-3. Log out, then log in again at `/login` using the same password and typing the phrase the same way → access granted.
-4. Try logging in with the correct password but typed very differently (much faster/slower, different rhythm) to see the behavioral check catch the mismatch.
+Make sure SentinelType is running before testing the integration.
 
-## Why a separate client app
+---
 
-Keeping NorthGate and SentinelType as two independent codebases/services mirrors how this would work in practice: SentinelType is a pluggable security layer that any application could call over an API, rather than being baked into one app's codebase. It also makes the demo honest — NorthGate genuinely doesn't know anything about keystroke dynamics or ML, it just forwards timing data and trusts the response.
+## How to Test the Integration
 
-## Limitations
+1. Start the SentinelType Flask backend.
+2. Start the NorthGate Admin application.
+3. Open `http://localhost:4000`.
+4. Navigate to the registration page.
+5. Create a new demo account.
+6. Complete the behavioural enrollment by typing the challenge phrase five times.
+7. Return to the login page.
+8. Enter the registered username and password.
+9. Type the same challenge phrase to generate a new behavioural sample.
+10. Observe the response returned by SentinelType.
+11. If the API returns `allowed`, NorthGate redirects to its dashboard. Otherwise, the login page displays the verification result.
 
-- This is a demo/prototype, not a production authentication system.
-- All "admin console" data (access log, approval counts) is static/mocked for demonstration — it is not a real audit system.
-- Session handling is intentionally simple; a production system would need CSRF protection, rate limiting, and stronger session management.
+---
 
-## Related
+## Demo Scope and Limitations
 
-- [SentinelType](https://github.com/gufrancse/sentinel-type) — the behavioral biometric authentication service this app integrates with.
+This project is intentionally lightweight and focuses on demonstrating API integration.
+
+- User information is currently stored in an in-memory JavaScript object and is not persistent across server restarts.
+- The dashboard contains demonstration data and is not a real administrative audit system.
+- Session management is simplified for demonstration purposes.
+- The application is not designed as a production-ready authentication platform.
+- SentinelType must be running and accessible for behavioural enrollment and verification.
+- The application depends on the API response to make its behavioural access decision.
+
+---
+
+## Relationship with SentinelType
+
+This repository is a separate client application for demonstrating SentinelType integration.
+
+**Main Project:** [SentinelType — Behavioural Biometric Authentication System](https://github.com/gufrancse/sentinel-type)
+
+SentinelType performs the behavioural analysis and returns an authentication decision through its REST API.
+
+NorthGate Admin demonstrates how an existing web application can consume that decision without directly implementing the underlying machine-learning system.
+
+---
+
+## Author
+
+**Gufran Ahmad**  
+B.Tech — Computer Science and Engineering  
+ITS Engineering College, Greater Noida
+
+GitHub: [@gufrancse](https://github.com/gufrancse)
+
+---
+
+*NorthGate Admin — A lightweight API integration demonstration for SentinelType Behavioural Biometric Authentication.*
